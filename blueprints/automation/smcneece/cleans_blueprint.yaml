@@ -2,7 +2,7 @@ blueprint:
   name: CLEANS – Clothes Laundering Event Alert Notification System
   description: >
     CLEANS detects washer or dryer cycles using vibration sensors, input_booleans, and timers.
-    Prevents false alerts from short bumps, fill/drain phases, or unloading. Works on both machines. v1.5
+    Prevents false alerts from short bumps, fill/drain phases, or unloading. Works on both machines. v1.6
   domain: automation
   input:
     vibration_sensor:
@@ -92,6 +92,9 @@ blueprint:
       selector:
         text: {}
 
+variables:
+  done_timeout_value: !input done_timeout
+
 trigger:
   - platform: state
     entity_id: !input vibration_sensor
@@ -130,7 +133,7 @@ action:
         sequence:
           - service: timer.start
             data:
-              duration: "00:{{ '%02d' | format(done_timeout | int) }}:00"
+              duration: "00:{{ '%02d' | format(done_timeout_value | int) }}:00"
             target:
               entity_id: !input done_timer
 

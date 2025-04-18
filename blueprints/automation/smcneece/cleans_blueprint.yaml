@@ -1,0 +1,188 @@
+
+blueprint:
+  name: CLEANS – Clothes Laundering Event Alert Notification System
+  description: >
+    CLEANS detects washer or dryer cycles using vibration sensors, input_booleans, and timers.
+    Prevents false alerts from short bumps, fill/drain phases, or unloading. Works on both machines. v1.4
+  domain: automation
+  input:
+    vibration_sensor:
+      name: Vibration Sensor
+      description: The binary_sensor that detects vibration from washer or dryer.
+      default: binary_sensor.washer_sensor_vibration
+      selector:
+        entity:
+          domain: binary_sensor
+    friendly_name:
+      name: Friendly Machine Name
+      description: Used in notifications (e.g. Washer or Dryer).
+      default: Washing Machine
+      selector:
+        text: {}
+    active_flag:
+      name: Active Input Boolean
+      description: input_boolean used to track active cycle state.
+      selector:
+        entity:
+          domain: input_boolean
+    done_timer:
+      name: Done Timer
+      description: Timer helper used to track when vibration has stopped.
+      selector:
+        entity:
+          domain: timer
+    min_run_duration:
+      name: Minimum Vibration Time (Minutes)
+      default: 2
+      selector:
+        number:
+          min: 1
+          max: 10
+          unit_of_measurement: minutes
+    done_timeout:
+      name: Time Without Vibration Before Done (Minutes)
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 15
+          unit_of_measurement: minutes
+    enable_mobile:
+      name: Enable Mobile Notifications
+      default: true
+      selector:
+        boolean: {}
+    mobile_notify_target:
+      name: Mobile Notify Service
+      default: notify.mobile_app_shawn_cell
+      selector:
+        text: {}
+    enable_alexa:
+      name: Enable Alexa Notifications
+      default: true
+      selector:
+        boolean: {}
+    alexa_target:
+      name: Alexa Notify Service
+      default: notify.alexa_media_echoclockdot
+      selector:
+        text: {}
+    alexa_start_time:
+      name: Alexa Start Time
+      default: "09:00"
+      selector:
+        time: {}
+    alexa_end_time:
+      name: Alexa End Time
+      default: "21:00"
+      selector:
+        time: {}
+    enable_email:
+      name: Enable Email Notifications
+      default: false
+      selector:
+        boolean: {}
+    email_notify_target:
+      name: Email Notify Service
+      default: notify.your_email_com
+      selector:
+        text: {}
+    email_to_address:
+      name: Email Recipient
+      default: yourname@gmail.com
+      selector:
+        text: {}
+
+trigger:
+  - platform: state
+    entity_id: !input vibration_sensor
+    from: "off"
+    to: "on"
+    for:
+      minutes: !input min_run_duration
+    id: "start"
+  - platform: state
+    entity_id: !input vibration_sensor
+    from: "on"
+    to: "off"
+    id: "stop"
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "start"
+        sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: !input active_flag
+          - service: timer.cancel
+            target:
+              entity_id: !input done_timer
+
+      - conditions:
+          - condition: trigger
+            id: "stop"
+          - condition: state
+            entity_id: !input active_flag
+            state: "on"
+        sequence:
+          - service: timer.start
+            data:
+              duration: !input done_timeout
+            target:
+              entity_id: !input done_timer
+
+  - wait_for_trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: !input done_timer
+
+  - service: input_boolean.turn_off
+    target:
+      entity_id: !input active_flag
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ is_state(active_flag, 'off') }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_mobile }}"
+                sequence:
+                  - service: !input mobile_notify_target
+                    data:
+                      title: "{{ friendly_name }} Done"
+                      message: "{{ friendly_name }} cycle has finished."
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ enable_alexa and
+                         (alexa_start_time <= now().strftime('%H:%M') <= alexa_end_time) }}
+                sequence:
+                  - service: !input alexa_target
+                    data:
+                      message: "{{ friendly_name }} cycle has finished."
+                      data:
+                        type: announce
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_email }}"
+                sequence:
+                  - service: !input email_notify_target
+                    data:
+                      title: "{{ friendly_name }} Done"
+                      message: "{{ friendly_name }} cycle has finished."
+                      data:
+                        to: "{{ email_to_address }}"
+
+mode: single

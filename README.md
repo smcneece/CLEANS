@@ -54,7 +54,8 @@ timer: !include timer.yaml
 ## 📥 Import This Blueprint
 
 Click this button to import it directly into Home Assistant:
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?repository_url=https://raw.githubusercontent.com/smcneece/CLEANS/main/blueprints/automation/smcneece/cleans_blueprint.yaml)
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/smcneece/CLEANS/main/blueprints/automation/smcneece/cleans_blueprint.yaml)
+
 
 
 ---
